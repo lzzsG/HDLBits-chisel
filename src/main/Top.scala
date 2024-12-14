@@ -4,20 +4,18 @@ import chisel3._
 import chisel3.util._
 import _root_.circt.stage.ChiselStage
 
-class add1 extends Module {
+class Mux2to1(val width: Int) extends Module {
   val io = IO(new Bundle {
-    val a    = Input(Bool())
-    val b    = Input(Bool())
-    val cin  = Input(Bool())
-    val sum  = Output(Bool())
-    val cout = Output(Bool())
+    val in0 = Input(UInt(width.W))
+    val in1 = Input(UInt(width.W))
+    val sel = Input(Bool())
+    val out = Output(UInt(width.W))
   })
 
-  io.sum  := io.a ^ io.b ^ io.cin                              // 和
-  io.cout := (io.a & io.b) | (io.a & io.cin) | (io.b & io.cin) // 进位
+  io.out := Mux(io.sel, io.in1, io.in0)
 }
 
-class add16 extends Module {
+class Add16 extends Module {
   val io = IO(new Bundle {
     val a    = Input(UInt(16.W))
     val b    = Input(UInt(16.W))
@@ -26,27 +24,10 @@ class add16 extends Module {
     val cout = Output(Bool())
   })
 
-  val carry = Wire(Vec(16, Bool()))
-  val sum   = Wire(Vec(16, Bool()))
+  io.sum  := io.a +& io.b +& io.cin
+  io.cout := (io.a & io.b) | (io.a & io.cin) | (io.b & io.cin)
 
-  val add1_0 = Module(new add1)
-  add1_0.io.a   := io.a(0)
-  add1_0.io.b   := io.b(0)
-  add1_0.io.cin := io.cin
-  sum(0)        := add1_0.io.sum
-  carry(0)      := add1_0.io.cout
-
-  for (i <- 1 until 16) {
-    val add1 = Module(new add1)
-    add1.io.a   := io.a(i)
-    add1.io.b   := io.b(i)
-    add1.io.cin := carry(i - 1)
-    sum(i)      := add1.io.sum
-    carry(i)    := add1.io.cout
-  }
-
-  io.cout := carry(15)
-  io.sum  := sum.asUInt
+  // 内部逻辑
 }
 
 /** Top module
@@ -59,24 +40,41 @@ class Top extends Module {
     val sum = Output(UInt(32.W))
   })
 
-  val loCout = Wire(Bool())
-  val loSum  = Wire(UInt(16.W))
-  val hiCout = Wire(Bool())
-  val hiSum  = Wire(UInt(16.W))
+  val loCout    = Wire(Bool())
+  val loSum     = Wire(UInt(16.W))
+  val hiCout_c0 = Wire(Bool())
+  val hiCout_c1 = Wire(Bool())
+  val hiSum_c0  = Wire(UInt(16.W))
+  val hiSum_c1  = Wire(UInt(16.W))
+  val hiSum     = Wire(UInt(16.W))
 
-  val add16_0 = Module(new add16)
+  val add16_0 = Module(new Add16)
   add16_0.io.a   := io.a(15, 0)
   add16_0.io.b   := io.b(15, 0)
   add16_0.io.cin := false.B
-  loSum          := add16_0.io.sum
   loCout         := add16_0.io.cout
+  loSum          := add16_0.io.sum
 
-  val add16_1 = Module(new add16)
-  add16_1.io.a   := io.a(31, 16)
-  add16_1.io.b   := io.b(31, 16)
-  add16_1.io.cin := loCout
-  hiSum          := add16_1.io.sum
-  hiCout         := add16_1.io.cout
+  val add16_1_c0 = Module(new Add16)
+  add16_1_c0.io.a   := io.a(31, 16)
+  add16_1_c0.io.b   := io.b(31, 16)
+  add16_1_c0.io.cin := false.B
+  hiCout_c0         := add16_1_c0.io.cout
+  hiSum_c0          := add16_1_c0.io.sum
+
+  val add16_1_c1 = Module(new Add16)
+  add16_1_c1.io.a   := io.a(31, 16)
+  add16_1_c1.io.b   := io.b(31, 16)
+  add16_1_c1.io.cin := true.B
+  hiCout_c1         := add16_1_c1.io.cout
+  hiSum_c1          := add16_1_c1.io.sum
+
+  val u_mux2to1 = Module(new Mux2to1(16))
+  u_mux2to1.io.in0 := hiSum_c0
+  u_mux2to1.io.in1 := hiSum_c1
+  u_mux2to1.io.sel := loCout
+  hiSum            := u_mux2to1.io.out
 
   io.sum := Cat(hiSum, loSum)
+
 }
