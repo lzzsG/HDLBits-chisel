@@ -11,17 +11,18 @@ class Top extends Module {
     val a               = Input(Bool())
     val b               = Input(Bool())
     val out_assign      = Output(Bool())
-    val out_alwaysblock = Output(Bool())
+    val out_always_comb = Output(Bool())
+    val out_always_ff   = Output(Bool())
+// end
   })
 
-  io.out_assign := io.a & io.b
+  val aXorb = Wire(Bool())
+  aXorb := io.a ^ io.b
 
-  val result = Wire(Bool())
-  when(io.a && io.b) {
-    result := true.B
-  }.otherwise {
-    result := false.B
-  }
-  io.out_alwaysblock := result
+  io.out_assign := aXorb
+
+  io.out_always_comb := aXorb
+
+  io.out_always_ff := RegNext(aXorb)
 
 }
