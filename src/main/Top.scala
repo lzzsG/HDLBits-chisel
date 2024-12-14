@@ -3,15 +3,16 @@ package top
 import chisel3._
 import _root_.circt.stage.ChiselStage
 
-class mod_a extends BlackBox {
+class my_dff extends Module {
   val io = IO(new Bundle {
-    val out1 = Output(Bool())
-    val out2 = Output(Bool())
-    val a    = Input(Bool())
-    val b    = Input(Bool())
-    val c    = Input(Bool())
-    val d    = Input(Bool())
+    val clk = Input(Bool())
+    val d   = Input(Bool())
+    val q   = Output(Bool())
   })
+
+  // D触发器实现，简单逻辑为存储单元
+  val reg = RegNext(io.d)
+  io.q := reg
 }
 
 /** Top module
@@ -20,22 +21,27 @@ class Top extends Module {
   val io = IO(new Bundle {
 
 // start
-    val a    = Input(Bool())
-    val b    = Input(Bool())
-    val c    = Input(Bool())
-    val d    = Input(Bool())
-    val out1 = Output(Bool())
-    val out2 = Output(Bool())
+    val clk = Input(Bool())
+    val d   = Input(Bool())
+    val q   = Output(Bool())
 
   })
 
-  val u_mod_a = Module(new mod_a)
+  val q1 = Wire(Bool())
+  val q2 = Wire(Bool())
 
-  io.out1      := u_mod_a.io.out1
-  io.out2      := u_mod_a.io.out2
-  u_mod_a.io.a := io.a
-  u_mod_a.io.b := io.b
-  u_mod_a.io.c := io.c
-  u_mod_a.io.d := io.d
+  val u_dff1 = Module(new my_dff)
+  u_dff1.io.clk := io.clk
+  u_dff1.io.d   := io.d
+  q1            := u_dff1.io.q
 
+  val u_dff2 = Module(new my_dff)
+  u_dff2.io.clk := io.clk
+  u_dff2.io.d   := q1
+  q2            := u_dff2.io.q
+
+  val u_dff3 = Module(new my_dff)
+  u_dff3.io.clk := io.clk
+  u_dff3.io.d   := q2
+  io.q          := u_dff3.io.q
 }
