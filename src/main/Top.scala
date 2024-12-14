@@ -2,7 +2,6 @@ package top
 
 import chisel3._
 import _root_.circt.stage.ChiselStage
-import chisel3.util.Cat
 
 /** Top module
   */
@@ -10,16 +9,15 @@ class Top extends Module {
   val io = IO(new Bundle {
 
 // start
-    val a              = Input(UInt(3.W))
-    val b              = Input(UInt(3.W))
-    val out_or_bitwise = Output(UInt(3.W))
-    val out_or_logical = Output(Bool())
-    val out_not        = Output(UInt(6.W))
+    val in      = Input(UInt(4.W))
+    val out_and = Output(Bool())
+    val out_or  = Output(Bool())
+    val out_xor = Output(Bool())
 
   })
 
-  io.out_or_bitwise := io.a | io.b
-  io.out_or_logical := io.a.orR || io.b.orR
-  io.out_not        := Cat(~io.b, ~io.a)
+  io.out_and := io.in.andR
+  io.out_or  := io.in.orR
+  io.out_xor := io.in.xorR
 
 }
