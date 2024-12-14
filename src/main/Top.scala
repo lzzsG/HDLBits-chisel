@@ -7,10 +7,7 @@ import _root_.circt.stage.ChiselStage
   */
 class Top extends Module {
   val io = IO(new Bundle {
-
 // start
     val
-
   })
-
 }
