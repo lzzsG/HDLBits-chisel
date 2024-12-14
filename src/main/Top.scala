@@ -10,11 +10,16 @@ class Top extends Module {
   val io = IO(new Bundle {
 
 // start
-    val in  = Input(UInt(32.W))
-    val out = Output(UInt(32.W))
+    val a              = Input(UInt(3.W))
+    val b              = Input(UInt(3.W))
+    val out_or_bitwise = Output(UInt(3.W))
+    val out_or_logical = Output(Bool())
+    val out_not        = Output(UInt(6.W))
 
   })
 
-  io.out := Cat(io.in(7, 0), io.in(15, 8), io.in(23, 16), io.in(31, 24))
+  io.out_or_bitwise := io.a | io.b
+  io.out_or_logical := io.a.orR || io.b.orR
+  io.out_not        := Cat(~io.b, ~io.a)
 
 }
