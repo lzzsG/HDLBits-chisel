@@ -2,17 +2,17 @@ package top
 
 import chisel3._
 import _root_.circt.stage.ChiselStage
+import chisel3.util.MuxLookup
 
-class my_dff extends Module {
+class my_diff8 extends Module {
   val io = IO(new Bundle {
-    val clk = Input(Bool())
-    val d   = Input(Bool())
-    val q   = Output(Bool())
+    val clk = Input(Clock())
+    val d   = Input(UInt(8.W))
+    val q   = Output(UInt(8.W))
   })
 
-  // D触发器实现，简单逻辑为存储单元
-  val reg = RegNext(io.d)
-  io.q := reg
+  val q = RegNext(io.d, 0.U)
+  io.q := q
 }
 
 /** Top module
@@ -21,27 +21,40 @@ class Top extends Module {
   val io = IO(new Bundle {
 
 // start
-    val clk = Input(Bool())
-    val d   = Input(Bool())
-    val q   = Output(Bool())
+    val clk = Input(Clock())
+    val sel = Input(UInt(2.W))
+    val d   = Input(UInt(8.W))
+    val q   = Output(UInt(8.W))
 
   })
 
-  val q1 = Wire(Bool())
-  val q2 = Wire(Bool())
+  val q1 = Wire(UInt(8.W))
+  val q2 = Wire(UInt(8.W))
+  val q3 = Wire(UInt(8.W))
 
-  val u_dff1 = Module(new my_dff)
-  u_dff1.io.clk := io.clk
-  u_dff1.io.d   := io.d
-  q1            := u_dff1.io.q
+  val u_diff1 = Module(new my_diff8)
+  val u_diff2 = Module(new my_diff8)
+  val u_diff3 = Module(new my_diff8)
 
-  val u_dff2 = Module(new my_dff)
-  u_dff2.io.clk := io.clk
-  u_dff2.io.d   := q1
-  q2            := u_dff2.io.q
+  u_diff1.io.clk := io.clk
+  u_diff1.io.d   := io.d
+  q1             := u_diff1.io.q
 
-  val u_dff3 = Module(new my_dff)
-  u_dff3.io.clk := io.clk
-  u_dff3.io.d   := q2
-  io.q          := u_dff3.io.q
+  u_diff2.io.clk := io.clk
+  u_diff2.io.d   := q1
+  q2             := u_diff2.io.q
+
+  u_diff3.io.clk := io.clk
+  u_diff3.io.d   := q2
+  q3             := u_diff3.io.q
+
+  io.q := MuxLookup(io.sel, io.d)(
+    Seq(
+      0.U -> io.d,
+      1.U -> q1,
+      2.U -> q2,
+      3.U -> q3
+    )
+  )
+
 }
